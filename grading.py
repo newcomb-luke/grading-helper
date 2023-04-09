@@ -112,6 +112,9 @@ def grade_submission(submission: Submission) -> Grade:
 
                 return Grade(submission, 19.0, comment=comment)
 
+    if os.path.exists("studentData.bin"):
+        os.remove("studentData.bin")
+
     cprint('Should attempt to run?', 'green')
 
     should_run = get_answer_yes_no()
@@ -128,6 +131,9 @@ def grade_submission(submission: Submission) -> Grade:
         cprint('Run again?', 'green')
 
         should_run = get_answer_yes_no()
+
+    if os.path.exists("studentData.bin"):
+        os.remove("studentData.bin")
 
     cprint('Score: ', 'green')
 

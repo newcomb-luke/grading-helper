@@ -1,7 +1,8 @@
 import toml
+import subprocess
 from interactivity import *
 from models import *
-from test_cases import *
+from test_cases import compile_test, run_test
 from termcolor import colored, cprint
 import json
 
@@ -59,7 +60,7 @@ def read_file_contents(path: os.DirEntry) -> str:
 
 
 def grade_submission(submission: Submission) -> Grade:
-    extension_whitelist = ['sh']
+    extension_whitelist = ['c']
 
     cprint('===============================================================', 'green')
     cprint(f'Student name: {submission.student.name}', 'green')
@@ -73,7 +74,7 @@ def grade_submission(submission: Submission) -> Grade:
         cprint('Extension not in whitelist, view file contents?', 'red')
         should_print_contents = get_answer_yes_no()
 
-        cprint('Auto 0?', 'red')
+        cprint('Auto 19?', 'red')
         if get_answer_yes_no():
 
             cprint('Leave a comment?', 'red')
@@ -82,7 +83,7 @@ def grade_submission(submission: Submission) -> Grade:
             if get_answer_yes_no():
                 comment = input('> ')
 
-            return Grade(submission, 0.0, comment=comment)
+            return Grade(submission, 19.0, comment=comment)
 
     if should_print_contents:
         cprint('File contents: ', 'green')
@@ -92,19 +93,41 @@ def grade_submission(submission: Submission) -> Grade:
 
     cprint('---------------------------------------------------------------', 'green')
 
+    cprint('Compile?', 'green')
+
+    if get_answer_yes_no():
+        subprocess.run(f'dos2unix {submission.file.path}', check=True, shell=True)
+
+        if not compile_test(submission.file.path):
+            cprint('Compiling failed!', 'red')
+
+            cprint('Auto 19?', 'red')
+
+            if get_answer_yes_no():
+                cprint('Leave a comment?', 'red')
+                comment = None
+
+                if get_answer_yes_no():
+                    comment = input('> ')
+
+                return Grade(submission, 19.0, comment=comment)
+
     cprint('Should attempt to run?', 'green')
 
     should_run = get_answer_yes_no()
 
-    if should_run:
+    while should_run:
         subprocess.run(f'dos2unix {submission.file.path}', check=True, shell=True)
 
-        for i in range(5):
-            if not run_with_argument(submission.file.path, i):
+        try:
+            if not run_test(submission.file.path):
                 cprint('Program crashed!', 'red')
+        except KeyboardInterrupt:
+            cprint('\nProgram exited by you', 'yellow')
 
-            if not run_with_interactive(submission.file.path, i):
-                cprint('Program crashed!', 'red')
+        cprint('Run again?', 'green')
+
+        should_run = get_answer_yes_no()
 
     cprint('Score: ', 'green')
 

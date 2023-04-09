@@ -9,7 +9,14 @@ import json
 def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str, Student]):
     submissions = []
 
+    if len(submission_files) == 0:
+        print("No assignments in folder")
+        return submissions
+
     for f in submission_files:
+
+        print(f"{f.name}")
+
         split_name = iter(f.name.split('_'))
         student_name = next(split_name)
         is_late = False
@@ -116,7 +123,8 @@ def load_from_disk(students_map):
     submission_files = []
 
     for file in os.scandir(ASSIGNMENTS_FOLDER):
-        submission_files.append(file)
+        if not file.name.startswith("."):
+            submission_files.append(file)
 
     submission_files.sort(key=lambda x: x.name)
 
@@ -140,7 +148,7 @@ if __name__ == '__main__':
     students = []
     students_map = {}
 
-    with open('../students.txt', 'r') as f:
+    with open('students.txt', 'r') as f:
         for line in f.readlines():
             student = Student(Name.from_str(line))
             students.append(student)

@@ -1,22 +1,21 @@
 import toml
 import subprocess
-from interactivity import *
-from models import *
+from interactivity import get_float, get_answer_yes_no
+from models import Student, Name, LoadedDir, Grade, to_dict, Submission
 from test_cases import compile_test, run_test
 from termcolor import colored, cprint
 import json
+import os
 
 
 def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str, Student]):
-    submissions = []
+    pre_submissions = {}
 
     if len(submission_files) == 0:
         print("No assignments in folder")
-        return submissions
+        return []
 
     for f in submission_files:
-
-        print(f"{f.name}")
 
         split_name = iter(f.name.split('_'))
         student_name = next(split_name)
@@ -32,9 +31,41 @@ def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str
         student = students[student_name]
 
         if student is None:
-            exit(f'Student of Canvas name {student_name} was not in students.txt')
+            print(f'Student of Canvas name {student_name} was not in students.txt')
+            exit(1)
 
-        submissions.append(Submission(f, student, student_id, is_late))
+        if pre_submissions[student_name] is None:
+            pre_submissions[student_name] = {
+                        "calc": None,
+                        "shell": None,
+                        "student_id": student_id,
+                        "is_late": is_late,
+                        "student": student
+                    }
+
+        if "calc" in f.name:
+            if pre_submissions[student_name]["calc"] is None:
+                print(f"Two calc files submitted by student {student_name}")
+                exit(1)
+
+            pre_submissions[student_name]["calc"] = f
+        else:
+            if pre_submissions[student_name]["shell"] is None:
+                print(f"Two shell files submitted by student {student_name}")
+                exit(1)
+
+            pre_submissions[student_name]["shell"] = f
+
+    submissions = []
+
+    for name, data in pre_submissions:
+        student = data["student"]
+        student_id = data["student_id"]
+        is_late = data["is_late"]
+        shell_file = data["shell"]
+        calc_file = data["calc"]
+
+        submissions.append(Submission(shell_file, calc_file, student, student_id, is_late))
 
     return submissions
 

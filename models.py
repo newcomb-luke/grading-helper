@@ -65,18 +65,20 @@ class Student:
 
 
 class Submission:
-    def __init__(self, submission_file: os.DirEntry, student: Student, student_id: int, is_late: bool):
-        self.file = submission_file
+    def __init__(self, shell_file: os.DirEntry, calc_file: os.DirEntry, student: Student, student_id: int, is_late: bool):
+        self.shell_file = shell_file
+        self.calc_file = calc_file
         self.student = student
         self.student_id = student_id
         self.is_late = is_late
 
-    def extension(self):
-        return self.file.name.split('.')[-1]
+    def extensions(self):
+        return (self.shell_file.name.split('.')[-1], self.calc_file.name.split('.')[-1])
 
     def __to_dict__(self):
         return {
-            'file': self.file.path,
+            'shell_file': self.shell_file.path,
+            'calc_file': self.calc_file.path,
             'student': to_dict(self.student),
             'student_id': self.student_id,
             'is_late': self.is_late
@@ -85,7 +87,8 @@ class Submission:
     @staticmethod
     def from_dict(d):
         return Submission(
-            LoadedDir.from_path(d['file']),
+            LoadedDir.from_path(d['shell_file']),
+            LoadedDir.from_path(d['calc_file']),
             Student.from_dict(d['student']),
             d['student_id'],
             d['is_late']
@@ -121,5 +124,9 @@ class LoadedDir:
 
     @staticmethod
     def from_path(path: str):
+
+        if path is None:
+            return None
+
         name = path.split(os.sep)[-1]
         return LoadedDir(path, name)

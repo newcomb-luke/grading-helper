@@ -16,7 +16,6 @@ def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str
         return []
 
     for f in submission_files:
-
         split_name = iter(f.name.split('_'))
         student_name = next(split_name)
         is_late = False
@@ -34,7 +33,7 @@ def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str
             print(f'Student of Canvas name {student_name} was not in students.txt')
             exit(1)
 
-        if pre_submissions[student_name] is None:
+        if student_name not in pre_submissions:
             pre_submissions[student_name] = {
                         "calc": None,
                         "shell": None,
@@ -43,14 +42,14 @@ def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str
                         "student": student
                     }
 
-        if "calc" in f.name:
-            if pre_submissions[student_name]["calc"] is None:
+        if "calc" in f.name.lower():
+            if pre_submissions[student_name]["calc"] is not None:
                 print(f"Two calc files submitted by student {student_name}")
                 exit(1)
 
             pre_submissions[student_name]["calc"] = f
         else:
-            if pre_submissions[student_name]["shell"] is None:
+            if pre_submissions[student_name]["shell"] is not None:
                 print(f"Two shell files submitted by student {student_name}")
                 exit(1)
 
@@ -58,7 +57,7 @@ def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str
 
     submissions = []
 
-    for name, data in pre_submissions:
+    for name, data in pre_submissions.items():
         student = data["student"]
         student_id = data["student_id"]
         is_late = data["is_late"]
@@ -203,7 +202,7 @@ def grade_submission(submission: Submission) -> Grade:
 
     while should_run:
         try:
-            if not run_test(submission.file.path):
+            if not run_test(submission.shell_file.path):
                 cprint('Program crashed!', 'red')
         except KeyboardInterrupt:
             cprint('\nProgram exited by you', 'yellow')

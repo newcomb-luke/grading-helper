@@ -77,8 +77,8 @@ class Submission:
 
     def __to_dict__(self):
         return {
-            'shell_file': self.shell_file.path,
-            'calc_file': self.calc_file.path,
+            'shell_file': self.shell_file.path if self.shell_file is not None else None,
+            'calc_file': self.calc_file.path if self.calc_file is not None else None,
             'student': to_dict(self.student),
             'student_id': self.student_id,
             'is_late': self.is_late

@@ -65,7 +65,7 @@ def calc_test(path: str):
             operator = test['operator']
             answer = test['answer']
 
-            output = subprocess.getoutput(f'./calc {num1} "{operator}" {num2}', check=True)
+            output = subprocess.getoutput(f'./calc {num1} "{operator}" {num2}')
             output = output.strip()
 
             parsed = True
@@ -91,7 +91,7 @@ def calc_test(path: str):
             fails += 1
 
     try:
-        error_output = subprocess.getoutput(f'./calc chewsday', check=True)
+        error_output = subprocess.getoutput(f'./calc chewsday')
 
         cprint(f'Error output: "{error_output}"', 'green')
         cprint('Is this valid?', 'green')

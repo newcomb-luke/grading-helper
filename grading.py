@@ -2,7 +2,7 @@ import toml
 import subprocess
 from interactivity import get_float, get_answer_yes_no
 from models import Student, Name, LoadedDir, Grade, to_dict, Submission
-from test_cases import compile_test, run_test
+from test_cases import compile_test, run_test, calc_test
 from termcolor import colored, cprint
 import json
 import os
@@ -90,25 +90,60 @@ def read_file_contents(path: os.DirEntry) -> str:
     return s
 
 
+def review_code_file(file, extension, output_file_name: str):
+    extension_whitelist = ['c']
+
+    cprint('===============================================================', 'green')
+    cprint(f'Submission file name: {file.name}', 'green')
+    cprint(f'Submission file extension: {extension}', 'green')
+    cprint('===============================================================', 'green')
+
+    should_print_contents = True
+    extension_in_whitelist = extension in extension_whitelist
+
+    if not extension_in_whitelist:
+        cprint('Extension not in whitelist, view file contents?', 'red')
+        should_print_contents = get_answer_yes_no()
+
+    if should_print_contents:
+        cprint('File contents: ', 'green')
+        cprint('---------------------------------------------------------------', 'green')
+
+        cprint(read_file_contents(file), 'yellow')
+
+    cprint('---------------------------------------------------------------', 'green')
+
+    if extension_in_whitelist:
+        cprint('Attempting compilation...', 'green')
+    else:
+        cprint('Skipping compilation due to unrecognized file extension...', 'red')
+
+    subprocess.run(f'dos2unix {file.path}', check=True, shell=True)
+
+    if not compile_test(file.path, output_file_name):
+        cprint('Compiling failed!', 'red')
+        return False
+
+    return True
+
+
 def grade_submission(submission: Submission) -> Grade:
     extension_whitelist = ['c']
 
     cprint('===============================================================', 'green')
     cprint(f'Student name: {submission.student.name}', 'green')
     cprint(f'Late: {"Yes" if submission.is_late else "No"}', 'green')
-    cprint(f'Submission file extension: {submission.extension()}', 'green')
     cprint('===============================================================', 'green')
 
-    should_print_contents = True
+    calc_worked = review_code_file(submission.calc_file, submission.extensions()[1], "calc")
+    shell_worked = review_code_file(submission.shell_file, submission.extensions()[0], "current-executable")
 
-    if submission.extension() not in extension_whitelist:
-        cprint('Extension not in whitelist, view file contents?', 'red')
-        should_print_contents = get_answer_yes_no()
+    if not shell_worked and not calc_worked:
+        cprint('Neither succeeded to compile, auto 19?', 'red')
 
-        cprint('Auto 19?', 'red')
         if get_answer_yes_no():
+            cprint('Leave a comment?', 'yellow')
 
-            cprint('Leave a comment?', 'red')
             comment = None
 
             if get_answer_yes_no():
@@ -116,43 +151,57 @@ def grade_submission(submission: Submission) -> Grade:
 
             return Grade(submission, 19.0, comment=comment)
 
-    if should_print_contents:
-        cprint('File contents: ', 'green')
-        cprint('---------------------------------------------------------------', 'green')
+    running_grade = 0.0
 
-        cprint(read_file_contents(submission.file), 'yellow')
+    if calc_worked:
+        cprint('calc compiled successfully, running calc tests', 'green')
 
-    cprint('---------------------------------------------------------------', 'green')
+        passes, fails = calc_test(submission.calc_file)
 
-    cprint('Compile?', 'green')
+        cprint('===============================================================', 'green')
+        cprint(f'Passes: {passes}', 'green')
+        cprint(f'Fails: {fails}', 'yellow')
+        cprint('===============================================================', 'green')
 
-    if get_answer_yes_no():
-        subprocess.run(f'dos2unix {submission.file.path}', check=True, shell=True)
+        running_grade += passes * 5.0
 
-        if not compile_test(submission.file.path):
-            cprint('Compiling failed!', 'red')
+    if not shell_worked:
+        cprint('Shell failed to compile.', 'red')
 
-            cprint('Auto 19?', 'red')
+        if not calc_worked:
+            cprint('Calc failed to compile.', 'red')
+        else:
+            running_grade += 25.0
 
-            if get_answer_yes_no():
-                cprint('Leave a comment?', 'red')
-                comment = None
+        cprint(f'Use partial grade of {running_grade}?', 'yellow')
 
-                if get_answer_yes_no():
-                    comment = input('> ')
+        grade = 0.0
 
-                return Grade(submission, 19.0, comment=comment)
+        if get_answer_yes_no():
+            grade = running_grade
+        else:
+            cprint('Score: ', 'green')
+            grade = get_float()
 
-    if os.path.exists("studentData.bin"):
-        os.remove("studentData.bin")
+        cprint('Comment:', 'green')
+
+        comment = input('> ')
+
+        if len(comment.strip()) == 0:
+            comment = None
+
+        return Grade(submission, grade, comment)
+
+    if shell_worked and not calc_worked:
+        cprint('Calc failed to compile. Using reference implementation.', 'red')
+        # Use reference calc implementation
+        subprocess.run("gcc -o calc reference-calc.c", shell=True, check=True)
 
     cprint('Should attempt to run?', 'green')
 
     should_run = get_answer_yes_no()
 
     while should_run:
-        subprocess.run(f'dos2unix {submission.file.path}', check=True, shell=True)
-
         try:
             if not run_test(submission.file.path):
                 cprint('Program crashed!', 'red')
@@ -162,9 +211,6 @@ def grade_submission(submission: Submission) -> Grade:
         cprint('Run again?', 'green')
 
         should_run = get_answer_yes_no()
-
-    if os.path.exists("studentData.bin"):
-        os.remove("studentData.bin")
 
     cprint('Score: ', 'green')
 

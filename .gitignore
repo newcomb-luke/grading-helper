@@ -132,6 +132,7 @@ dmypy.json
 grades.toml
 grades-backup.json
 current-executable
+reference-calc
 assignments/
 #!.gitkeep
 

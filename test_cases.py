@@ -68,17 +68,24 @@ def calc_test(path: str):
             output = subprocess.getoutput(f'./calc {num1} "{operator}" {num2}')
             output = output.strip()
 
-            parsed = True
-
-            try:
-                output = float(output)
-            except ValueError:
-                cprint('Failed to parse output as a float', 'red')
-                parsed = False
-
             epsilon = 0.0001
 
-            if parsed and answer + epsilon > output and answer - epsilon < output:
+            found = False
+
+            for token in output.split():
+                parsed = True
+                parse_output = 0.0
+
+                try:
+                    parse_output = float(token)
+                except ValueError:
+                    parsed = False
+
+                if parsed and answer + epsilon > parse_output and answer - epsilon < parse_output:
+                    found = True
+                    break
+
+            if found:
                 passes += 1
             else:
                 cprint(f'Answer {answer} not found, is {output} correct?', 'yellow')

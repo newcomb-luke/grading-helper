@@ -92,6 +92,9 @@ def read_file_contents(path: os.DirEntry) -> str:
 def review_code_file(file, extension, output_file_name: str):
     extension_whitelist = ['c']
 
+    if file is None:
+        return False
+
     cprint('===============================================================', 'green')
     cprint(f'Submission file name: {file.name}', 'green')
     cprint(f'Submission file extension: {extension}', 'green')
@@ -134,6 +137,8 @@ def grade_submission(submission: Submission) -> Grade:
     cprint(f'Late: {"Yes" if submission.is_late else "No"}', 'green')
     cprint('===============================================================', 'green')
 
+    calc_present = submission.calc_file is not None
+
     calc_worked = review_code_file(submission.calc_file, submission.extensions()[1], "calc")
     shell_worked = review_code_file(submission.shell_file, submission.extensions()[0], "current-executable")
 
@@ -162,15 +167,13 @@ def grade_submission(submission: Submission) -> Grade:
         cprint(f'Fails: {fails}', 'yellow')
         cprint('===============================================================', 'green')
 
-        running_grade += passes * 5.0
+        running_grade += passes * 5.0 + 25.0
 
     if not shell_worked:
         cprint('Shell failed to compile.', 'red')
 
         if not calc_worked:
             cprint('Calc failed to compile.', 'red')
-        else:
-            running_grade += 25.0
 
         cprint(f'Use partial grade of {running_grade}?', 'yellow')
 
@@ -191,8 +194,14 @@ def grade_submission(submission: Submission) -> Grade:
 
         return Grade(submission, grade, comment)
 
+    if shell_worked:
+        running_grade += 25.0
+
     if shell_worked and not calc_worked:
-        cprint('Calc failed to compile. Using reference implementation.', 'red')
+        if calc_present:
+            cprint('Calc failed to compile. Using reference implementation.', 'red')
+        else:
+            cprint('Calc file is not present in the submission. Using reference implementation.', 'red')
         # Use reference calc implementation
         subprocess.run("gcc -o calc reference-calc.c", shell=True, check=True)
 
@@ -210,6 +219,8 @@ def grade_submission(submission: Submission) -> Grade:
         cprint('Run again?', 'green')
 
         should_run = get_answer_yes_no()
+
+    cprint(f'Suggested score: {running_grade}', 'green')
 
     cprint('Score: ', 'green')
 

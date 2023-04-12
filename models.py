@@ -64,6 +64,13 @@ class Student:
         return Student(Name.from_dict(d['name']))
 
 
+def file_extension(file: os.DirEntry) -> str:
+    if file is None:
+        return None
+
+    return file.name.split('.')[-1]
+
+
 class Submission:
     def __init__(self, shell_file: os.DirEntry, calc_file: os.DirEntry, student: Student, student_id: int, is_late: bool):
         self.shell_file = shell_file
@@ -73,7 +80,7 @@ class Submission:
         self.is_late = is_late
 
     def extensions(self):
-        return (self.shell_file.name.split('.')[-1], self.calc_file.name.split('.')[-1])
+        return (file_extension(self.shell_file), file_extension(self.calc_file))
 
     def __to_dict__(self):
         return {

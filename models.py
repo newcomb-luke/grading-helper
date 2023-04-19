@@ -72,20 +72,18 @@ def file_extension(file: os.DirEntry) -> str:
 
 
 class Submission:
-    def __init__(self, shell_file: os.DirEntry, calc_file: os.DirEntry, student: Student, student_id: int, is_late: bool):
-        self.shell_file = shell_file
-        self.calc_file = calc_file
+    def __init__(self, file: os.DirEntry, student: Student, student_id: int, is_late: bool):
+        self.file = file
         self.student = student
         self.student_id = student_id
         self.is_late = is_late
 
-    def extensions(self):
-        return (file_extension(self.shell_file), file_extension(self.calc_file))
+    def extension(self):
+        return file_extension(self.file)
 
     def __to_dict__(self):
         return {
-            'shell_file': self.shell_file.path if self.shell_file is not None else None,
-            'calc_file': self.calc_file.path if self.calc_file is not None else None,
+            'file': self.file.path if self.file is not None else None,
             'student': to_dict(self.student),
             'student_id': self.student_id,
             'is_late': self.is_late
@@ -94,8 +92,7 @@ class Submission:
     @staticmethod
     def from_dict(d):
         return Submission(
-            LoadedDir.from_path(d['shell_file']),
-            LoadedDir.from_path(d['calc_file']),
+            LoadedDir.from_path(d['file']),
             Student.from_dict(d['student']),
             d['student_id'],
             d['is_late']

@@ -2,18 +2,18 @@ import toml
 import subprocess
 from interactivity import get_float, get_answer_yes_no
 from models import Student, Name, LoadedDir, Grade, to_dict, Submission
-from test_cases import compile_test, run_test, calc_test
+from test_cases import compile_test, run_test
 from termcolor import colored, cprint
 import json
 import os
 
 
 def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str, Student]):
-    pre_submissions = {}
-
     if len(submission_files) == 0:
         print("No assignments in folder")
         return []
+
+    submissions = []
 
     for f in submission_files:
         split_name = iter(f.name.split('_'))
@@ -33,38 +33,7 @@ def files_to_submissions(submission_files: list[os.DirEntry], students: dict[str
             print(f'Student of Canvas name {student_name} was not in students.txt')
             exit(1)
 
-        if student_name not in pre_submissions:
-            pre_submissions[student_name] = {
-                        "calc": None,
-                        "shell": None,
-                        "student_id": student_id,
-                        "is_late": is_late,
-                        "student": student
-                    }
-
-        if "calc" in f.name.lower():
-            if pre_submissions[student_name]["calc"] is not None:
-                print(f"Two calc files submitted by student {student_name}")
-                exit(1)
-
-            pre_submissions[student_name]["calc"] = f
-        else:
-            if pre_submissions[student_name]["shell"] is not None:
-                print(f"Two shell files submitted by student {student_name}")
-                exit(1)
-
-            pre_submissions[student_name]["shell"] = f
-
-    submissions = []
-
-    for name, data in pre_submissions.items():
-        student = data["student"]
-        student_id = data["student_id"]
-        is_late = data["is_late"]
-        shell_file = data["shell"]
-        calc_file = data["calc"]
-
-        submissions.append(Submission(shell_file, calc_file, student, student_id, is_late))
+        submissions.append(Submission(f, student, student_id, is_late))
 
     return submissions
 
@@ -137,13 +106,10 @@ def grade_submission(submission: Submission) -> Grade:
     cprint(f'Late: {"Yes" if submission.is_late else "No"}', 'green')
     cprint('===============================================================', 'green')
 
-    calc_present = submission.calc_file is not None
+    compile_worked = review_code_file(submission.file, submission.extension(), "current-executable")
 
-    calc_worked = review_code_file(submission.calc_file, submission.extensions()[1], "calc")
-    shell_worked = review_code_file(submission.shell_file, submission.extensions()[0], "current-executable")
-
-    if not shell_worked and not calc_worked:
-        cprint('Neither succeeded to compile, auto 19?', 'red')
+    if not compile_worked:
+        cprint('File failed to compile, auto 19?', 'red')
 
         if get_answer_yes_no():
             cprint('Leave a comment?', 'yellow')
@@ -155,63 +121,13 @@ def grade_submission(submission: Submission) -> Grade:
 
             return Grade(submission, 19.0, comment=comment)
 
-    running_grade = 0.0
-
-    if calc_worked:
-        cprint('calc compiled successfully, running calc tests', 'green')
-
-        passes, fails = calc_test(submission.calc_file)
-
-        cprint('===============================================================', 'green')
-        cprint(f'Passes: {passes}', 'green')
-        cprint(f'Fails: {fails}', 'yellow')
-        cprint('===============================================================', 'green')
-
-        running_grade += passes * 5.0 + 25.0
-
-    if not shell_worked:
-        cprint('Shell failed to compile.', 'red')
-
-        if not calc_worked:
-            cprint('Calc failed to compile.', 'red')
-
-        cprint(f'Use partial grade of {running_grade}?', 'yellow')
-
-        grade = 0.0
-
-        if get_answer_yes_no():
-            grade = running_grade
-        else:
-            cprint('Score: ', 'green')
-            grade = get_float()
-
-        cprint('Comment:', 'green')
-
-        comment = input('> ')
-
-        if len(comment.strip()) == 0:
-            comment = None
-
-        return Grade(submission, grade, comment)
-
-    if shell_worked:
-        running_grade += 25.0
-
-    if shell_worked and not calc_worked:
-        if calc_present:
-            cprint('Calc failed to compile. Using reference implementation.', 'red')
-        else:
-            cprint('Calc file is not present in the submission. Using reference implementation.', 'red')
-        # Use reference calc implementation
-        subprocess.run("gcc -o calc reference-calc.c", shell=True, check=True)
-
     cprint('Should attempt to run?', 'green')
 
     should_run = get_answer_yes_no()
 
     while should_run:
         try:
-            if not run_test(submission.shell_file.path):
+            if not run_test(submission.file.path):
                 cprint('Program crashed!', 'red')
         except KeyboardInterrupt:
             cprint('\nProgram exited by you', 'yellow')
@@ -220,17 +136,23 @@ def grade_submission(submission: Submission) -> Grade:
 
         should_run = get_answer_yes_no()
 
-    cprint(f'Suggested score: {running_grade}', 'green')
-
     cprint('Score: ', 'green')
 
     score = get_float()
 
-    cprint('Leave a comment?', 'green')
     comment = None
 
-    if get_answer_yes_no():
-        comment = input('> ')
+    if score == 100.0:
+        cprint('Auto "Great job!" comment?', 'green')
+
+        if get_answer_yes_no():
+            comment = 'Great job!'
+
+    if comment is None:
+        cprint('Leave a comment?', 'green')
+
+        if get_answer_yes_no():
+            comment = input('> ')
 
     return Grade(submission, score, comment=comment)
 

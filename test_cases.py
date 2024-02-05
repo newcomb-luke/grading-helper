@@ -8,7 +8,7 @@ def compile_test(path: str, output_file_name: str):
     cprint(f'Compile test', 'green')
     cprint('---------------------------------------------------------------', 'green')
     try:
-        subprocess.run(f'gcc -o ./{output_file_name} {path}', shell=True, check=True)
+        subprocess.run(f'gcc -o ./{output_file_name} {path} -lm', shell=True, check=True)
         return True
     except subprocess.CalledProcessError:
         return False
@@ -19,96 +19,79 @@ def run_test(path: str):
     cprint(f'Interactive test', 'green')
     cprint('---------------------------------------------------------------', 'green')
     try:
-        subprocess.run(f'./current-executable', shell=True, check=True)
+        subprocess.run(f'./current-code', shell=True, check=True)
         return True
     except subprocess.CalledProcessError:
         return False
 
 
-def calc_test(path: str):
+def hex2dec_test(path: str):
     cprint('---------------------------------------------------------------', 'green')
-    cprint('Calc program automated test', 'green')
+    cprint('hex2dec program automated test', 'green')
     cprint('---------------------------------------------------------------', 'green')
 
     tests = [{
-                'num1': 5,
-                'operator': "*",
-                'num2': 7,
-                'answer': 35
+                'inputs': ['100F'],
+                'answers': ['4111']
         },
              {
-                'num1': 60,
-                'operator': "-",
-                'num2': 27,
-                'answer': 60 - 27
+                 'inputs': ['BEEF'],
+                 'answers': ['48879']
         },
              {
-                'num1': 814,
-                'operator': "/",
-                'num2': 11,
-                'answer': 74
+                 'inputs': ['A1', 'CAB', '100F'],
+                 'answers': ['161', '3243', '4111']
         },
              {
-                 'num1': 77798,
-                 'operator': "+",
-                 'num2': 2,
-                 'answer': 77800
-        }]
+                 'inputs': ['41', 'DEAD', 'FACC'],
+                 'answers': ['65', '57005', '64204']
+        },
+             {
+                 'inputs': ['a1', 'cab', '100f'],
+                 'answers': ['161', '3243', '4111']
+        },
+             {
+                 'inputs': ['41', 'dead', 'facc'],
+                 'answers': ['65', '57005', '64204']
+        },
+             {
+                 'inputs': ['r2d2'],
+                 'answers': ['not']
+        },
+        ]
 
     passes = 0
     fails = 0
 
     for test in tests:
         try:
-            num1 = test['num1']
-            num2 = test['num2']
-            operator = test['operator']
-            answer = test['answer']
+            hex_numbers = test['inputs']
+            answers = test['answers']
 
-            output = subprocess.getoutput(f'./calc {num1} "{operator}" {num2}')
-            output = output.strip()
+            arguments = ' '.join(hex_numbers).strip()
 
-            epsilon = 0.0001
+            output = subprocess.getoutput(f'./current-code {arguments}')
+            output_answers = output.strip().split('\n')
 
-            found = False
-
-            for token in output.split():
-                parsed = True
-                parse_output = 0.0
-
-                try:
-                    parse_output = float(token)
-                except ValueError:
-                    parsed = False
-
-                if parsed and answer + epsilon > parse_output and answer - epsilon < parse_output:
-                    found = True
-                    break
-
-            if found:
-                passes += 1
-            else:
-                cprint(f'Answer {answer} not found, is {output} correct?', 'yellow')
+            if len(answers) != len(output_answers):
+                cprint(f'There seems to be a mismatch here. Is {output} correct?', 'yellow')
 
                 if get_answer_yes_no():
                     passes += 1
                 else:
                     fails += 1
+
+            for (answer, line) in zip(answers, output_answers):
+                if answer in line:
+                    passes += 1
+                else:
+                    cprint(f'Answer {answer} not found, is {line} correct?', 'yellow')
+
+                    if get_answer_yes_no():
+                        passes += 1
+                    else:
+                        fails += 1
         except subprocess.CalledProcessError:
             fails += 1
-
-    try:
-        error_output = subprocess.getoutput(f'./calc chewsday')
-
-        cprint(f'Error output: "{error_output}"', 'green')
-        cprint('Is this valid?', 'green')
-
-        if get_answer_yes_no():
-            passes += 1
-        else:
-            fails += 1
-
-    except subprocess.CalledProcessError:
-        fails += 1
 
     return (passes, fails)

@@ -14,7 +14,7 @@ def compile_test(path: str, output_file_name: str):
         return False
 
 
-def run_test(path: str):
+def run_test():
     cprint('---------------------------------------------------------------', 'green')
     cprint(f'Interactive test', 'green')
     cprint('---------------------------------------------------------------', 'green')

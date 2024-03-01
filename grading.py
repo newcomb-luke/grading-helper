@@ -123,7 +123,7 @@ def grade_submission(submission: Submission) -> Grade:
     code_compiled = review_code_file(submission.code_file, submission.extensions()[0], "current-code")
 
     if not code_compiled:
-        cprint('Code failed to compile, auto 0?', 'red')
+        cprint('Code failed to compile, auto 20?', 'red')
 
         if get_answer_yes_no():
             cprint('Leave a comment?', 'yellow')
@@ -133,28 +133,62 @@ def grade_submission(submission: Submission) -> Grade:
             if get_answer_yes_no():
                 comment = input('> ')
 
-            return Grade(submission, 19.0, comment=comment)
+            return Grade(submission, 20.0, comment=comment)
+
+    if os.path.exists('jobs.data'):
+        os.remove('jobs.data')
 
     running_grade = 0.0
 
     if code_compiled:
+        running_grade += 30.0
+
         cprint('Is code style acceptable?', 'yellow')
 
         if get_answer_yes_no():
             running_grade += 10.0
 
-
     if code_compiled:
-        cprint('Code compiled successfully, running tests', 'green')
+        cprint('Code compiled successfully, running interactively', 'green')
 
-        passes, fails = hex2dec_test(submission.code_file)
+        should_run = True
 
-        cprint('===============================================================', 'green')
-        cprint(f'Passes: {passes}', 'green')
-        cprint(f'Fails: {fails}', 'yellow')
-        cprint('===============================================================', 'green')
+        while should_run:
+            try:
+                if not run_test():
+                    cprint('Program crashed!', 'red')
+            except KeyboardInterrupt:
+                cprint('\nProgram exited by you', 'yellow')
 
-        running_grade += (passes * (50.0 / 15.0)) + 40.0
+            cprint('Run again?', 'green')
+
+            should_run = get_answer_yes_no()
+
+        questions = [
+                    'Did file IO work properly?',
+                    'Did Display work?',
+                    'Did Search work?',
+                    'Did Add work?',
+                    'Did Delete work?',
+                    'Did Average work?'
+                ]
+
+        for question in questions:
+            cprint(question, 'green')
+            if get_answer_yes_no():
+                running_grade += 10.0
+
+    # if code_compiled:
+    #     cprint('Code compiled successfully, running tests', 'green')
+
+    #     passes, fails = hex2dec_test(submission.code_file)
+
+    #     cprint('===============================================================', 'green')
+    #     cprint(f'Passes: {passes}', 'green')
+    #     cprint(f'Fails: {fails}', 'yellow')
+    #     cprint('===============================================================', 'green')
+
+    #     running_grade += (passes * (50.0 / 15.0)) + 40.0
 
     # if not shell_worked:
     #     cprint('Shell failed to compile.', 'red')
